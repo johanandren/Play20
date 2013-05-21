@@ -37,23 +37,19 @@ def loginPost = Action { implicit request =>
     },
     {
       case (openid) => AsyncResult(OpenID.redirectURL(openid, routes.Application.openIDCallback.absoluteURL())
-          .extend( _.value match {
-              case Redeemed(url) => Redirect(url)
-              case Thrown(t) => Redirect(routes.Application.login)
-          }))
-    }
-  )
+        .map( url => Redirect(url))
+        .recover { case Thrown(error) => Redirect(routes.Application.login) }
+      )
+    })
 }
 
 def openIDCallback = Action { implicit request =>
   AsyncResult(
-    OpenID.verifiedId.extend( _.value match {
-      case Redeemed(info) => Ok(info.id + "\n" + info.attributes)
-      case Thrown(t) => {
+    OpenID.verifiedId.map(info => Ok(info.id + "\n" + info.attributes))
+      .recover { case Thrown(t) =>
         // Here you should look at the error, and give feedback to the user
         Redirect(routes.Application.login)
       }
-    })
   )
 }
 ```
